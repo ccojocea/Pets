@@ -15,6 +15,9 @@
  */
 package com.example.android.pets;
 
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.support.v4.app.NavUtils;
 import android.support.v7.app.AppCompatActivity;
@@ -26,9 +29,11 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.Spinner;
+import android.widget.Toast;
 
 import com.example.android.pets.data.PetContract;
 import com.example.android.pets.data.PetContract.PetEntry;
+import com.example.android.pets.data.PetDbHelper;
 
 /**
  * Allows user to create a new pet or edit an existing one.
@@ -53,6 +58,8 @@ public class EditorActivity extends AppCompatActivity {
      */
     private int mGender = 0;
 
+    private PetDbHelper mDbHelper;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -65,6 +72,8 @@ public class EditorActivity extends AppCompatActivity {
         mGenderSpinner = (Spinner) findViewById(R.id.spinner_gender);
 
         setupSpinner();
+
+        mDbHelper = new PetDbHelper(this);
     }
 
     /**
@@ -106,6 +115,29 @@ public class EditorActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Get user input from the editor and save new pet into database
+     */
+    private void insertPet() {
+        ContentValues values = new ContentValues();
+        values.put(PetEntry.COLUMN_PET_NAME, mNameEditText.getText().toString().trim());
+        values.put(PetEntry.COLUMN_PET_BREED, mBreedEditText.getText().toString().trim());
+        String weight = mWeightEditText.getText().toString().trim();
+        if (!weight.equals("")) {
+            values.put(PetEntry.COLUMN_PET_WEIGHT, Integer.parseInt(mWeightEditText.getText().toString().trim()));
+        }
+        values.put(PetEntry.COLUMN_PET_GENDER, mGender);
+
+        SQLiteDatabase db = mDbHelper.getWritableDatabase();
+        long result = db.insert(PetEntry.TABLE_NAME, null, values);
+
+        if (result != -1) {
+            Toast.makeText(this, "You have inserted pet with ID: " + result + "!", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, "Error saving pet!", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu options from the res/menu/menu_editor.xml file.
@@ -120,7 +152,11 @@ public class EditorActivity extends AppCompatActivity {
         switch (item.getItemId()) {
             // Respond to a click on the "Save" menu option
             case R.id.action_save:
-                // Do nothing for now
+                // Save pet to the database
+                insertPet();
+                // Close the activity
+                finish();
+
                 return true;
             // Respond to a click on the "Delete" menu option
             case R.id.action_delete:
