@@ -18,6 +18,7 @@ package com.example.android.pets;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.NavUtils;
 import android.support.v7.app.AppCompatActivity;
@@ -34,6 +35,8 @@ import android.widget.Toast;
 import com.example.android.pets.data.PetContract;
 import com.example.android.pets.data.PetContract.PetEntry;
 import com.example.android.pets.data.PetDbHelper;
+
+import java.net.URI;
 
 /**
  * Allows user to create a new pet or edit an existing one.
@@ -58,7 +61,7 @@ public class EditorActivity extends AppCompatActivity {
      */
     private int mGender = 0;
 
-    private PetDbHelper mDbHelper;
+    //private PetDbHelper mDbHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,7 +76,7 @@ public class EditorActivity extends AppCompatActivity {
 
         setupSpinner();
 
-        mDbHelper = new PetDbHelper(this);
+        //mDbHelper = new PetDbHelper(this);
     }
 
     /**
@@ -119,6 +122,10 @@ public class EditorActivity extends AppCompatActivity {
      * Get user input from the editor and save new pet into database
      */
     private void insertPet() {
+        // Read from input fields
+        // Use trim to eliminate leading or trailing white space
+        // Create a ContentValues object where column names are the keys,
+        // and pet attributes from the editor are the values.
         ContentValues values = new ContentValues();
         values.put(PetEntry.COLUMN_PET_NAME, mNameEditText.getText().toString().trim());
         values.put(PetEntry.COLUMN_PET_BREED, mBreedEditText.getText().toString().trim());
@@ -128,12 +135,18 @@ public class EditorActivity extends AppCompatActivity {
         }
         values.put(PetEntry.COLUMN_PET_GENDER, mGender);
 
-        SQLiteDatabase db = mDbHelper.getWritableDatabase();
-        long result = db.insert(PetEntry.TABLE_NAME, null, values);
+        //SQLiteDatabase db = mDbHelper.getWritableDatabase();
+        //long result = db.insert(PetEntry.TABLE_NAME, null, values);
 
-        if (result != -1) {
-            Toast.makeText(this, "You have inserted pet with ID: " + result + "!", Toast.LENGTH_SHORT).show();
+        // Insert a new pet into the provider, returning the content URI for the new pet.
+        Uri resultUri = getContentResolver().insert(PetEntry.CONTENT_URI, values);
+
+        // Show a toast message depending on whether or not the insertion was successful
+        if (resultUri != null) {
+            // The insertion was successful and we can display a toast.
+            Toast.makeText(this, "You have inserted pet with ID: " + resultUri.getLastPathSegment() + "!", Toast.LENGTH_SHORT).show();
         } else {
+            // If the new content URI is null, then there was an error with insertion.
             Toast.makeText(this, "Error saving pet!", Toast.LENGTH_SHORT).show();
         }
     }

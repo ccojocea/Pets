@@ -18,7 +18,7 @@ package com.example.android.pets;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
@@ -28,7 +28,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
 
-import com.example.android.pets.data.PetDbHelper;
 import com.example.android.pets.data.PetContract.PetEntry;
 
 /**
@@ -38,7 +37,7 @@ public class CatalogActivity extends AppCompatActivity {
 
     private static final String TAG = CatalogActivity.class.getName();
 
-    private PetDbHelper mDbHelper;
+    //private PetDbHelper mDbHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,7 +56,7 @@ public class CatalogActivity extends AppCompatActivity {
 
         // To access our database, we instantiate our subclass of SQLiteOpenHelper
         // and pass the context, which is the current activity.
-        mDbHelper = new PetDbHelper(this);
+        // mDbHelper = new PetDbHelper(this);
 
         displayDatabaseInfo();
 
@@ -84,23 +83,31 @@ public class CatalogActivity extends AppCompatActivity {
 
     public void insertData(){
         // Gets the data repository in write mode
-        SQLiteDatabase db = mDbHelper.getWritableDatabase();
+        // SQLiteDatabase db = mDbHelper.getWritableDatabase();
 
+        // Create a ContentValues object where column names are the keys,
+        // and Toto's pet attributes are the values.
         ContentValues values = new ContentValues();
         values.put(PetEntry.COLUMN_PET_NAME, "Toto");
         values.put(PetEntry.COLUMN_PET_BREED, "Terrier");
         values.put(PetEntry.COLUMN_PET_GENDER, PetEntry.GENDER_MALE);
         values.put(PetEntry.COLUMN_PET_WEIGHT, 7);
 
-        long result = db.insert(PetEntry.TABLE_NAME, null, values);
-        Log.d(TAG, "insertData: RESULT: " + result);
+        //long result = db.insert(PetEntry.TABLE_NAME, null, values);
+
+        // Insert a new row for Toto into the provider using the ContentResolver.
+        // Use the {@link PetEntry#CONTENT_URI} to indicate that we want to insert
+        // into the pets database table.
+        // Receive the new content URI that will allow us to access Toto's data in the future.
+        Uri resultUri = getContentResolver().insert(PetEntry.CONTENT_URI, values);
+        Log.d(TAG, "insertData: RESULT: " + resultUri);
     }
 
     public void deleteData() {
-        SQLiteDatabase db = mDbHelper.getWritableDatabase();
+        //SQLiteDatabase db = mDbHelper.getWritableDatabase();
 
-        long result = db.delete(PetEntry.TABLE_NAME, null, null);
-        Log.d(TAG, "deleteData: RESULT: " + result);
+        //long result = db.delete(PetEntry.TABLE_NAME, null, null);
+        //Log.d(TAG, "deleteData: RESULT: " + result);
     }
 
 
@@ -130,7 +137,7 @@ public class CatalogActivity extends AppCompatActivity {
      */
     private void displayDatabaseInfo() {
         // Create and/or open a database to read from it
-        SQLiteDatabase db = mDbHelper.getReadableDatabase();
+        // SQLiteDatabase db = mDbHelper.getReadableDatabase();
 
         // Perform this raw SQL query "SELECT * FROM pets"
         // to get a Cursor that contains all rows from the pets table.
@@ -162,33 +169,42 @@ public class CatalogActivity extends AppCompatActivity {
             PetEntry.COLUMN_PET_WEIGHT
         };
 
+        Cursor cursor = getContentResolver().query(
+                PetEntry.CONTENT_URI,
+                projection,
+                null,
+                null,
+                null);
+
+        /**
         Cursor cursor = db.query(PetEntry.TABLE_NAME, projection, null, null, null, null, null);
+        */
 
         try {
-            StringBuffer rows = new StringBuffer();
+            // Display the number of rows in the Cursor (which reflects the number of rows in the
+            // pets table in the database).
+            TextView displayView = (TextView) findViewById(R.id.text_view_pet);
+            displayView.setText("Number of rows in pets database table: " + cursor.getCount());
+
+            int idColumnIndex = cursor.getColumnIndex(PetEntry._ID);
+            int nameColumnIndex = cursor.getColumnIndex(PetEntry.COLUMN_PET_NAME);
+            int breedColumnIndex = cursor.getColumnIndex(PetEntry.COLUMN_PET_BREED);
+            int genderColumnIndex = cursor.getColumnIndex(PetEntry.COLUMN_PET_GENDER);
+            int weightColumn = cursor.getColumnIndex(PetEntry.COLUMN_PET_WEIGHT);
+
+            if (cursor.getCount() > 0) {
+                displayView.append("\n\n");
+            }
 
             while (cursor.moveToNext()) {
-                int idColumnIndex = cursor.getColumnIndex(PetEntry._ID);
-                int nameColumnIndex = cursor.getColumnIndex(PetEntry.COLUMN_PET_NAME);
-                int breedColumnIndex = cursor.getColumnIndex(PetEntry.COLUMN_PET_BREED);
-                int genderColumnIndex = cursor.getColumnIndex(PetEntry.COLUMN_PET_GENDER);
-                int weightColumn = cursor.getColumnIndex(PetEntry.COLUMN_PET_WEIGHT);
-
                 int id = cursor.getInt(idColumnIndex);
                 String name = cursor.getString(nameColumnIndex);
                 String breed = cursor.getString(breedColumnIndex);
                 int gender = cursor.getInt(genderColumnIndex);
                 int weight = cursor.getInt(weightColumn);
 
-                String row = "\n" + "ID: " + id + " Name: " + name + " Breed: " + breed + " GENDER: " + gender + " WEIGHT: " + weight;
-                rows.append(row);
+                displayView.append("\n" + "ID: " + id + " Name: " + name + " Breed: " + breed + " GENDER: " + gender + " WEIGHT: " + weight);
             }
-
-            // Display the number of rows in the Cursor (which reflects the number of rows in the
-            // pets table in the database).
-            TextView displayView = (TextView) findViewById(R.id.text_view_pet);
-            displayView.setText("Number of rows in pets database table: " + cursor.getCount() + "\n\n" + rows);
-
         } finally {
             // Always close the cursor when you're done reading from it. This releases all its
             // resources and makes it invalid.
