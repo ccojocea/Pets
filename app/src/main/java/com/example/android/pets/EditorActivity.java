@@ -15,8 +15,14 @@
  */
 package com.example.android.pets;
 
+import android.app.LoaderManager;
+import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.CursorLoader;
+import android.content.Loader;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.os.Bundle;
@@ -29,19 +35,31 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.SimpleCursorAdapter;
 import android.widget.Spinner;
 import android.widget.Toast;
 
 import com.example.android.pets.data.PetContract;
 import com.example.android.pets.data.PetContract.PetEntry;
-import com.example.android.pets.data.PetDbHelper;
-
-import java.net.URI;
 
 /**
  * Allows user to create a new pet or edit an existing one.
  */
-public class EditorActivity extends AppCompatActivity {
+public class EditorActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>{
+
+    private static final int PET_LOADER = 0;
+    private Uri mPetUri;
+
+    private boolean inEditMode = false;
+
+    // These are the Pets rows that we will retrieve
+    static final String[] PROJECTION = {
+            PetEntry._ID,
+            PetEntry.COLUMN_PET_NAME,
+            PetEntry.COLUMN_PET_BREED,
+            PetEntry.COLUMN_PET_GENDER,
+            PetEntry.COLUMN_PET_WEIGHT
+    };
 
     /** EditText field to enter the pet's name */
     private EditText mNameEditText;
@@ -69,12 +87,24 @@ public class EditorActivity extends AppCompatActivity {
         setContentView(R.layout.activity_editor);
 
         // Find all relevant views that we will need to read user input from
-        mNameEditText = (EditText) findViewById(R.id.edit_pet_name);
-        mBreedEditText = (EditText) findViewById(R.id.edit_pet_breed);
-        mWeightEditText = (EditText) findViewById(R.id.edit_pet_weight);
-        mGenderSpinner = (Spinner) findViewById(R.id.spinner_gender);
+        mNameEditText = findViewById(R.id.edit_pet_name);
+        mBreedEditText = findViewById(R.id.edit_pet_breed);
+        mWeightEditText = findViewById(R.id.edit_pet_weight);
+        mGenderSpinner = findViewById(R.id.spinner_gender);
 
         setupSpinner();
+
+        // Get intent and uri from data attached to the intent
+        mPetUri = getIntent().getData();
+        if (mPetUri != null) {
+            inEditMode = true;
+            setTitle(getString(R.string.editor_activity_title_edit_pet));
+            // Prepare the loader. Either re-connect with an existing one, or start a new one.
+            getLoaderManager().initLoader(PET_LOADER, null, this);
+        } else {
+            inEditMode = false;
+            setTitle(getString(R.string.editor_activity_title_new_pet));
+        }
 
         //mDbHelper = new PetDbHelper(this);
     }
@@ -121,7 +151,7 @@ public class EditorActivity extends AppCompatActivity {
     /**
      * Get user input from the editor and save new pet into database
      */
-    private void insertPet() {
+    private void savePet() {
         // Read from input fields
         // Use trim to eliminate leading or trailing white space
         // Create a ContentValues object where column names are the keys,
@@ -139,15 +169,20 @@ public class EditorActivity extends AppCompatActivity {
         //long result = db.insert(PetEntry.TABLE_NAME, null, values);
 
         // Insert a new pet into the provider, returning the content URI for the new pet.
-        Uri resultUri = getContentResolver().insert(PetEntry.CONTENT_URI, values);
-
-        // Show a toast message depending on whether or not the insertion was successful
-        if (resultUri != null) {
-            // The insertion was successful and we can display a toast.
-            Toast.makeText(this, "You have inserted pet with ID: " + resultUri.getLastPathSegment() + "!", Toast.LENGTH_SHORT).show();
+        // Or Update the current pet!
+        if (inEditMode) {
+            int updateResult = getContentResolver().update(PetEntry.CONTENT_URI, values, null, null);
+            //TODO: show toast message if the update was successful, also add a value to where and selectionArgs
         } else {
-            // If the new content URI is null, then there was an error with insertion.
-            Toast.makeText(this, "Error saving pet!", Toast.LENGTH_SHORT).show();
+            Uri resultUri = getContentResolver().insert(PetEntry.CONTENT_URI, values);
+            // Show a toast message depending on whether or not the insertion was successful
+            if (resultUri != null) {
+                // The insertion was successful and we can display a toast.
+                Toast.makeText(this, "You have inserted pet with ID: " + resultUri.getLastPathSegment() + "!", Toast.LENGTH_SHORT).show();
+            } else {
+                // If the new content URI is null, then there was an error with insertion.
+                Toast.makeText(this, "Error saving pet!", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
@@ -166,7 +201,13 @@ public class EditorActivity extends AppCompatActivity {
             // Respond to a click on the "Save" menu option
             case R.id.action_save:
                 // Save pet to the database
-                insertPet();
+                try {
+                    savePet();
+                } catch (IllegalArgumentException e) {
+                    Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
+                    return false;
+                }
+
                 // Close the activity
                 finish();
 
@@ -188,5 +229,36 @@ public class EditorActivity extends AppCompatActivity {
     public void onBackPressed() {
         super.onBackPressed();
         NavUtils.navigateUpFromSameTask(this);
+    }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        // Now create and return a CursorLoader that will take care of creating a Cursor for the data being displayed.
+        return new CursorLoader(this, mPetUri, PROJECTION, null, null, null);
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+        if (data.moveToFirst()) {
+            String name = data.getString(data.getColumnIndexOrThrow(PetEntry.COLUMN_PET_NAME));
+            mNameEditText.setText(name);
+
+            String breed = data.getString(data.getColumnIndexOrThrow(PetEntry.COLUMN_PET_BREED));
+            mBreedEditText.setText(breed);
+
+            int gender = data.getInt(data.getColumnIndexOrThrow(PetEntry.COLUMN_PET_GENDER));
+            mGenderSpinner.setSelection(gender);
+
+            int weight = data.getInt(data.getColumnIndexOrThrow(PetEntry.COLUMN_PET_WEIGHT));
+            mWeightEditText.setText(String.valueOf(weight));
+        }
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+        mNameEditText.setText("");
+        mBreedEditText.setText("");
+        mGenderSpinner.setSelection(PetEntry.GENDER_UNKNOWN);
+        mWeightEditText.setText("");
     }
 }
