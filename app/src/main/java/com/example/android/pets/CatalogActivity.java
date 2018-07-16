@@ -49,7 +49,7 @@ public class CatalogActivity extends AppCompatActivity implements LoaderManager.
     //private PetDbHelper mDbHelper;
 
     // This is the Adapter being used to display the list's data
-    SimpleCursorAdapter mCursorAdapter;
+    PetCursorAdapter mCursorAdapter;
 
     private static final int PET_LOADER = 0;
 
@@ -103,12 +103,13 @@ public class CatalogActivity extends AppCompatActivity implements LoaderManager.
         });
 
         // For the cursor adapter, specify which columns go into which views
-        String[] fromColumns = {PetEntry.COLUMN_PET_NAME, PetEntry.COLUMN_PET_BREED};
-        int[] toViews = {R.id.name, R.id.summary}; // The TextView in simple_list_item_1
+        //String[] fromColumns = {PetEntry.COLUMN_PET_NAME, PetEntry.COLUMN_PET_BREED};
+        //int[] toViews = {R.id.name, R.id.summary}; // The TextView in simple_list_item_1
 
         // Create an empty adapter we will use to display the loaded data.
         // We pass null for the cursor, then update it in onLoadFinished()
-        mCursorAdapter = new SimpleCursorAdapter(this, R.layout.list_item, null, fromColumns, toViews, 0);
+        //mCursorAdapter = new SimpleCursorAdapter(this, R.layout.list_item, null, fromColumns, toViews, 0);
+        mCursorAdapter = new PetCursorAdapter(this, null);
 
         // Prepare the loader. Either re-connect with an existing one, or start a new one.
         getLoaderManager().initLoader(PET_LOADER, null, this);
@@ -168,7 +169,8 @@ public class CatalogActivity extends AppCompatActivity implements LoaderManager.
     public void deleteData() {
         //SQLiteDatabase db = mDbHelper.getWritableDatabase();
 
-        getContentResolver().delete(PetEntry.CONTENT_URI, null, null);
+        int rowsDeleted = getContentResolver().delete(PetEntry.CONTENT_URI, null, null);
+        Log.v("CatalogActivity", rowsDeleted + " rows deleted from pet database");
 
         //long result = db.delete(PetEntry.TABLE_NAME, null, null);
         //Log.d(TAG, "deleteData: RESULT: " + result);

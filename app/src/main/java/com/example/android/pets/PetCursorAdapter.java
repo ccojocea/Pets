@@ -2,6 +2,8 @@ package com.example.android.pets;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,6 +22,8 @@ import com.example.android.pets.data.PetContract;
  * how to create list items for each row of pet data in the {@link Cursor}.
  */
 public class PetCursorAdapter extends CursorAdapter {
+
+    private static final String TAG = PetCursorAdapter.class.getSimpleName();
 
     /**
      * Constructs a new {@link PetCursorAdapter}.
@@ -67,8 +71,14 @@ public class PetCursorAdapter extends CursorAdapter {
 
         // Extract properties from cursor
         String name = cursor.getString(cursor.getColumnIndexOrThrow(PetContract.PetEntry.COLUMN_PET_NAME));
-        String summary = cursor.getString(cursor.getColumnIndexOrThrow(PetContract.PetEntry.COLUMN_PET_GENDER));
+        String summary = cursor.getString(cursor.getColumnIndexOrThrow(PetContract.PetEntry.COLUMN_PET_BREED));
 
+        Log.d(TAG, "bindView: 1 " + summary);
+        if (TextUtils.isEmpty(summary)) {
+            Log.d(TAG, "bindView: 2 " + summary);
+            summary = context.getString(R.string.unknown_breed);
+        }
+        
         // Populate fields with extracted properties
         tvPetName.setText(name);
         tvPetSummary.setText(summary);
